@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>ISIS Twitter Bargraph</title>
+    <script type="text/javascript" src = "http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    {% load staticfiles %}
+    <link rel="stylesheet" type="text/css" href="{% static 'entry/timeStyle.css' %}" /> 
+  </head>
+
+ <body>
+   <p>ISIS Twitter Tweets</p>
+  <div id="graphs" style="float:left;">
+  <div id="barGraph"></div>
+  <div id="navPlot"></div>
+  </div>
+  <div id="tweets" style="float:left;">
+    <p>"Here!"</p>
+  </div>
+  <script type="text/javascript">
+    var apiHost="http://127.0.0.1:8000"
+    //define graph space
+    var margin = {top: 20, right: 20, bottom: 62, left: 40},
+        width = 900 - margin.left - margin.right, //960
+        height = 400 - margin.top - margin.bottom; //500
+    var padding = {top:40, right:40, bottom:40, left:40};
+    var parseDate = d3.time.format("%m/%d/%Y").parse; //string to date
+    var formatDate = d3.time.format("%a: %m/%d/%y");            
+
+    //graph canvas
+    var barChart = d3.select('#barGraph').classed('chart', true).append('svg')
+                    .attr('width', width+ margin.left + margin.right)
+                    .attr('height', height+margin.top + margin.bottom)
+                    .append('g')
+                    .attr('transform', 'translate('+margin.left+','+margin.top+')');
+    //where the bars will appear on the graph canvas
+    var barArea = barChart.append('g').attr('clip-path', 'url(#barAreaClip)');
+    barArea.append('clipPath').attr("id", 'barAreaClip').append("rect")
+                              .attr({width:width, height: height});
+    date_count = [];
+    d3.json(apiHost+"/entry/tweet-count/", function(error, data){
+      data.forEach(function(d){
+        d.date = parseDate(d.date);
+        d.count = +d.count;
+      });
+      console.log(data[0]);
+      var minN = d3.min(data, function(d){return d.date;}).getTime(),
+          maxN = d3.max(data, function(d){return d.date;}).getTime();
+      var minDate = new Date(minN- (5*8.64e7)),
+          maxDate = new Date(maxN + (5*8.64e7));
+      var yMin = d3.min(data, function(d){return d.count;}),
+          yMax = d3.max(data, function(d){return d.count+10;});
+      var xScale = d3.time.scale().domain([minDate, maxDate]).range([0, width]),
+          yScale = d3.scale.linear().domain([yMin, yMax]).range([height, 0]);
+      var xAxis = d3.svg.axis().scale(xScale).orient('bottom').tickSize(-height, 0,0).ticks(5),
+          yAxis = d3.svg.axis().scale(yScale).orient('left'); 
+      var oneDay =24*60*60*1000,
+          diffDays = Math.round(Math.abs((minDate-maxDate)/oneDay)),
+          barWidth = Math.abs(width/diffDays);
+          barWidth = barWidth - .02, //padding
+          navBarWidth = barWidth;
+       var tip = d3.tip().attr('class', 'd3-tip').offset([-10,0]).html(function(d){
+         return "<span style='color:white'>" + d.count +",</span> <br/> <span style='color:white'>" + formatDate(d.date)+"</span>";
+       });
+      barArea.call(tip);
+      barChart.append('g').attr('class', 'x axis')
+              .attr('transform', 'translate(0,'+height+')').call(xAxis);
+      barChart.append('g').attr('class', 'y axis').call(yAxis)
+              .append("text").attr("transform", "rotate(-90)")
+              .attr("y", 6)
+              .attr("dy", ".71em")
+              .style("text-anchor", "end")
+              .text("Number of Tweets");
+      var mouseOn = function(d){tip.show(d); d3.select(this).style("fill", "orangered");}
+      var mouseOff = function(d){tip.hide(d); d3.select(this).style("fill", "steelblue");}
+      var barData = barArea.selectAll(".bar")
+                           .data(data)
+                           .enter().append("rect")
+                           .style("fill", "steelblue")
+                           .attr("x", function(d){return xScale(d.date);})
+                           .attr("width", barWidth)
+                           .attr("y", function(d){return yScale(d.count);})
+                           .attr("height", function(d){return height-yScale(d.count);})
+                           .on("mouseover", mouseOn)
+                           .on("mouseout", mouseOff);
+
+      var navWidth = width,
+          navHeight = 150-margin.top-margin.bottom,
+          navChart = d3.select('#navPlot').classed('chart', true).append('svg')
+                     .classed('navigator', true)
+                     .attr('width', navWidth+margin.left+margin.right)
+                     .attr('height', navHeight+margin.top+margin.bottom)
+                     .append('g')
+                     .attr('transform', 'translate('+margin.left+','+margin.top+')');
+      var navHeight = 200 - margin.top - margin.bottom;
+      var navXScale = d3.time.scale().domain([minDate, maxDate]).range([0, navWidth]);
+      var navYScale = d3.scale.linear().domain([yMin, yMax]).range([navHeight, 0]);
+      var navXAxis = d3.svg.axis().scale(navXScale).orient('bottom').tickSize(-navHeight, 0,0).ticks(5);
+      navChart.append('g').attr('class', 'x axis')
+                .attr('transform', 'translate(0,' + navHeight+')')
+                .call(navXAxis);
+      navChart.selectAll(".bar").data(data).enter().append("rect")
+                .style("fill", "steelblue")
+                .attr("x", function(d){return xScale(d.date);})
+                .attr("width", navBarWidth)
+                .attr("y", function(d){return navYScale(d.count);})
+                .attr("height", function(d){return navHeight - navYScale(d.count);});
+      function calcBarWidth(){
+        var newMinDate = xScale.domain()[0]
+        var newMaxDate = xScale.domain()[1]
+        var diffDays = Math.round(Math.abs((newMinDate - newMaxDate)/(oneDay)));
+        var barWidth = Math.abs(width/diffDays)-.02;
+        return barWidth;}
+
+      var barAttr = {
+        x:function(d){return xScale(d.date);},
+        y:function(d){return yScale(d.count);},
+        width: calcBarWidth,
+        fill: "steelblue",
+        height: function(d){return height - yScale(d.count);},};
+      
+      function redrawChart(){
+
+        barData.attr(barAttr);
+        barChart.select(".x.axis").call(xAxis);
+      }
+      var viewport = d3.svg.brush().x(navXScale).on("brush", function(){
+        xScale.domain(viewport.empty() ? navXScale.domain(): viewport.extent());
+        redrawChart();
+      });
+      navChart.append("g")
+            .attr("class", "viewport")
+            .call(viewport)
+            .selectAll("rect")
+            .attr("height", navHeight);
+
+    });
+
+  </script>
+ </body>
+</html>
