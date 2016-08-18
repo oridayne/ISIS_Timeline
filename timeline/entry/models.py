@@ -35,7 +35,7 @@ class Tweet(models.Model):
 	status_number = models.IntegerField(default=0)
 	user = models.ForeignKey(User, on_delete = models.CASCADE)
 	sentiment = models.CharField(max_length=15, choices = SENT, default = "Neutral")
-	mentioned_clergy = models.ManyToManyField(Clergy)
+	mentioned_clergy = models.ManyToManyField(Clergy, blank = True)
 
 	def __str__(self):
 		return self.user.name + "::: " + self.tweet_detail

@@ -15,8 +15,8 @@
   <div id="barGraph"></div>
   <div id="navPlot"></div>
   </div>
-  <div id="tweets" style="float:left;">
-    <p>"Here!"</p>
+  <div id="scroller" style="float:left; overflow-y:auto; width:250px; height:400px;" >
+    <div id="apiCall"></div>
   </div>
   <script type="text/javascript">
     var apiHost="http://127.0.0.1:8000"
@@ -27,6 +27,7 @@
     var padding = {top:40, right:40, bottom:40, left:40};
     var parseDate = d3.time.format("%m/%d/%Y").parse; //string to date
     var formatDate = d3.time.format("%a: %m/%d/%y");            
+    var apiDate = d3.time.format("%Y-%m-%d");
 
     //graph canvas
     var barChart = d3.select('#barGraph').classed('chart', true).append('svg')
@@ -44,8 +45,7 @@
         d.date = parseDate(d.date);
         d.count = +d.count;
       });
-      console.log(data[0]);
-      var minN = d3.min(data, function(d){return d.date;}).getTime(),
+            var minN = d3.min(data, function(d){return d.date;}).getTime(),
           maxN = d3.max(data, function(d){return d.date;}).getTime();
       var minDate = new Date(minN- (5*8.64e7)),
           maxDate = new Date(maxN + (5*8.64e7));
@@ -72,8 +72,35 @@
               .attr("dy", ".71em")
               .style("text-anchor", "end")
               .text("Number of Tweets");
+      var active = false;
+      var lastDate = false;
       var mouseOn = function(d){tip.show(d); d3.select(this).style("fill", "orangered");}
       var mouseOff = function(d){tip.hide(d); d3.select(this).style("fill", "steelblue");}
+      var formatTweets = function(d){
+        var user = d.user;
+        var username = user.name;
+        return "<strong>"+ username + "</strong>: "+d.tweet_detail+"<hr>";
+      }
+      var showTweets = function(d){
+        d3.select("#scroller").selectAll("#apiCall").html("");
+        d3.select("#scroller").selectAll("#tweet").remove();
+        if (active && lastDate == d.date) //toggling
+          {active = false;}  
+        else {
+          lastDate = d.date;
+          var path = apiHost + "/entry/tweets/?date=" + apiDate(d.date); 
+          var pathLink = "<a href="+path+">"
+          d3.json(path, function(error, dateData){
+            
+            d3.select("#apiCall").html("<strong>Api Call: </strong></br>"+pathLink+path+"</a>");
+            var tweetBox = d3.select("#scroller").selectAll("div")
+                             .data(dateData).enter().append("div").attr("id", "tweet")
+                             .html(formatTweets);
+
+
+          });
+          active = true;}
+      }
       var barData = barArea.selectAll(".bar")
                            .data(data)
                            .enter().append("rect")
@@ -83,7 +110,8 @@
                            .attr("y", function(d){return yScale(d.count);})
                            .attr("height", function(d){return height-yScale(d.count);})
                            .on("mouseover", mouseOn)
-                           .on("mouseout", mouseOff);
+                           .on("mouseout", mouseOff)
+                           .on("click", showTweets);
 
       var navWidth = width,
           navHeight = 150-margin.top-margin.bottom,
