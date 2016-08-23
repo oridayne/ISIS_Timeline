@@ -51,6 +51,30 @@ def tweet_date_list(request):
 		date_counts.append({"date": key, "count": date_dict[key]})
 	return response.Response(date_counts)
 
+@api_view(['GET'])
+def tweet_date_content(request):
+	"""
+	API Call for tweets on a date 
+	"""
+	date_dict = {}
+	def truncate(date):
+		return date.strftime('%m/%d/%Y')
+	def format_tweet(tw):
+		return (tw.user.name,tw.tweet_detail)
+
+	tweets = Tweet.objects.all()
+	for tw in tweets:
+		tweet_date = truncate(tw.date)
+		formated_tweet = format_tweet(tw)
+		if tweet_date in date_dict:
+			tweets_list = date_dict[tweet_date]
+			tweets_list.append(formated_tweet)
+		else:
+			date_dict[tweet_date] = [formated_tweet]
+	return response.Response(date_dict)
+
+
+
 def ISIS_Bargraph(request):
 	"""
 	Bargraph of tweets

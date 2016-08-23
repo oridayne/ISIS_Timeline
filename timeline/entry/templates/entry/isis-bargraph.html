@@ -45,7 +45,7 @@
         d.date = parseDate(d.date);
         d.count = +d.count;
       });
-            var minN = d3.min(data, function(d){return d.date;}).getTime(),
+      var minN = d3.min(data, function(d){return d.date;}).getTime(),
           maxN = d3.max(data, function(d){return d.date;}).getTime();
       var minDate = new Date(minN- (5*8.64e7)),
           maxDate = new Date(maxN + (5*8.64e7));
