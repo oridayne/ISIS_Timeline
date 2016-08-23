@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from entry.models import *
-from rest_framework import viewsets, filters, generics, response
+from rest_framework import viewsets, filters, generics, response, schemas
 
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, renderer_classes
+from rest_framework_swagger.renderers import OpenAPIRenderer, SwaggerUIRenderer
 from entry.serializers import *
 from django.core.paginator import Paginator
 import datetime
@@ -10,6 +11,13 @@ import json
 
 #from django.views.generics import ListAPIView
 # Create your views here.
+
+
+@api_view()
+@renderer_classes([OpenAPIRenderer, SwaggerUIRenderer])
+def schema_view(request):
+    generator = schemas.SchemaGenerator(title='Bookings API')
+    return response.Response(generator.get_schema(request=request))
 
 
 class UserViewSet(viewsets.ModelViewSet):
